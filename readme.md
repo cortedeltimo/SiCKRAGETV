@@ -20,6 +20,10 @@ SR_HOME=/home/\<USER\>/SiCKRAGE/
 SR_DATA=/home/\<USER\>/.sickrage/  
 SR_USER=\<USER\>  
 
+Add sickrage to boot sequence: 
+
+`sudo update-rc.d sickbeard defaults`
+
 Boot the service using: 
 
 `sudo service sickrage start`
