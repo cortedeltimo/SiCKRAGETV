@@ -1,5 +1,31 @@
 Automatic Video Library Manager for TV Shows. It watches for new episodes of your favorite shows, and when they are posted it does its magic.
 
+
+## Run Sickrage at at boot 
+
+Remove previous autostart (if any):
+
+`sudo rm /etc/init.d/sickrage`  
+`sudo rm /etc/default/sickrage`  
+`sudo update-rc.d -f sickrage remove`  
+  
+Copy init file from sickrage folder (assuming you are cloning sickrage from github into your home folder):
+
+`sudo cp ~/SiCKRAGE/runscripts/init.ubuntu /etc/init.d/sickrage`  
+`sudo chmod +x /etc/init.d/sickrage`  
+  
+Create file /etc/default/sickrage. Add the folllowing to the file: 
+
+SR_HOME=/home/\<USER\>/SiCKRAGE/  
+SR_DATA=/home/\<USER\>/.sickrage/  
+SR_USER=\<USER\>  
+
+Boot the service using: 
+
+`sudo service sickrage start`
+
+
+
 #### Dependencies
 - To run SickRage from source you will need Python 2.7.10
 - To install requirements run 'pip install -r requirements.txt' from install folder
