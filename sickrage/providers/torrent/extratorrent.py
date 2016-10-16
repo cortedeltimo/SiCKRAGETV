@@ -31,7 +31,7 @@ from sickrage.providers import TorrentProvider
 
 class ExtraTorrentProvider(TorrentProvider):
     def __init__(self):
-        super(ExtraTorrentProvider, self).__init__("ExtraTorrent",'extratorrent.cc', False)
+        super(ExtraTorrentProvider, self).__init__("ExtraTorrent",'https://extratorrent.cc', False)
 
         self.urls.update({
             'rss': '{base_url}/rss.xml'.format(base_url=self.urls['base_url'])
@@ -93,8 +93,11 @@ class ExtraTorrentProvider(TorrentProvider):
                         size = int(item['size'])
                         seeders = tryInt(item['seeders'], 0)
                         leechers = tryInt(item['leechers'], 0)
-                        download_url = item['enclosure']['@url'] if 'enclosure' in item else self._magnet_from_details(
-                            item['link'])
+                        #download_url = item['enclosure']['@url'] if 'enclosure' in item else self._magnet_from_details(
+                        #    item['link'])
+			item['link'] = item['link'].replace("http:", "https:")
+			download_url = self._magnet_from_details(item['link'])
+			sickrage.srCore.srLogger.debug("Download url: %s" % download_url)
 
                         if not all([title, download_url]):
                             continue
