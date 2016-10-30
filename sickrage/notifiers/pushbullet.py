@@ -24,6 +24,7 @@ import json
 import traceback
 
 import sickrage
+import requests
 from sickrage.core.common import NOTIFY_DOWNLOAD, NOTIFY_GIT_UPDATE, \
     NOTIFY_GIT_UPDATE_TEXT, NOTIFY_SNATCH, NOTIFY_SUBTITLE_DOWNLOAD, \
     notifyStrings
@@ -95,7 +96,7 @@ class PushbulletNotifier(srNotifiers):
         try:
 	    sickrage.srCore.srLogger.debug("Pushbullet %s %s %s" % (method, data, headers))
             # response = self.session.request(method, url, data=data, headers=headers)a
-	    response =  self.session.request(method, url, data=data, headers=headers)
+	    response =  sickrage.srCore.srWebSession.request(method, url, data=data, headers=headers)
         except Exception:
             sickrage.srCore.srLogger.debug('Pushbullet authorization failed with exception: %r' % traceback.format_exc())
             return False
