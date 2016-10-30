@@ -1,5 +1,5 @@
 # Author: echel0n <echel0n@sickrage.ca>
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -39,6 +39,7 @@ from feedparser import FeedParserDict
 from hachoir_core.stream import StringInputStream
 from hachoir_parser import guessParser
 from pynzb import nzb_parser
+from requests.utils import add_dict_to_cookiejar
 from sickrage.core.caches.tv_cache import TVCache
 from sickrage.core.classes import NZBSearchResult, Proper, SearchResult, \
     TorrentSearchResult
@@ -63,13 +64,18 @@ class GenericProvider(object):
         self.supports_backlog = False
         self.supports_absolute_numbering = False
         self.anime_only = False
-        self.search_mode = None
+        self.search_mode = 'eponly'
         self.search_fallback = False
         self.enabled = False
         self.enable_daily = False
         self.enable_backlog = False
         self.cache = TVCache(self)
         self.proper_strings = ['PROPER|REPACK|REAL']
+
+        self.enable_cookies = False
+        self.cookies = ''
+        self.rss_cookies = ''
+        self.cookie_jar = dict()
 
     @property
     def id(self):
@@ -463,12 +469,28 @@ class GenericProvider(object):
         return [Proper(x['name'], x['url'], datetime.datetime.fromtimestamp(x['time']), self.show) for x in
                 results]
 
-    def seedRatio(self):
+    def seed_ratio(self):
         '''
         Provider should override this value if custom seed ratio enabled
         It should return the value of the provider seed ratio
         '''
         return ''
+
+    def add_cookies_from_ui(self):
+        """
+        Adds the cookies configured from UI to the providers requests session
+        :return: A tuple with the the (success result, and a descriptive message in str)
+        """
+
+        # This is the generic attribute used to manually add cookies for provider authentication
+        if self.enable_cookies and self.cookies:
+            cookie_validator = re.compile(r'^(\w+=\w+)(;\w+=\w+)*$')
+            if cookie_validator.match(self.cookies):
+                add_dict_to_cookiejar(sickrage.srCore.srWebSession.cookies,
+                                      dict(x.rsplit('=', 1) for x in self.cookies.split(';')))
+                return True
+
+        return False
 
     @classmethod
     def getDefaultProviders(cls):
@@ -519,6 +541,7 @@ class TorrentProvider(GenericProvider):
 
     def __init__(self, name, url, private):
         super(TorrentProvider, self).__init__(name, url, private)
+        self.ratio = None
 
     @property
     def isActive(self):
@@ -668,6 +691,9 @@ class TorrentProvider(GenericProvider):
 
         return results
 
+    def seed_ratio(self):
+        return self.ratio
+
     @classmethod
     def getProviders(cls):
         return super(TorrentProvider, cls).loadProviders(cls.type)
@@ -678,8 +704,8 @@ class NZBProvider(GenericProvider):
 
     def __init__(self, name, url, private):
         super(NZBProvider, self).__init__(name, url, private)
-        self.api_key = None
-        self.username = None
+        self.api_key = ''
+        self.username = ''
 
     @property
     def isActive(self):
@@ -763,13 +789,13 @@ class TorrentRssProvider(TorrentProvider):
         super(TorrentRssProvider, self).__init__(name, url, private)
 
         self.cache = TorrentRssCache(self)
-        self.ratio = None
         self.supports_backlog = False
 
         self.search_mode = search_mode
         self.search_fallback = search_fallback
         self.enable_daily = enable_daily
         self.enable_backlog = enable_backlog
+        self.enable_cookies = True
         self.cookies = cookies
         self.titleTAG = titleTAG
         self.default = default
@@ -798,15 +824,12 @@ class TorrentRssProvider(TorrentProvider):
         return title, url
 
     def validateRSS(self):
-
         try:
             if self.cookies:
                 cookie_validator = re.compile(r"^(\w+=\w+)(;\w+=\w+)*$")
                 if not cookie_validator.match(self.cookies):
                     return False, 'Cookie is not correctly formatted: ' + self.cookies
 
-            # pylint: disable=W0212
-            # Access to a protected member of a client class
             data = self.cache._get_rss_data()['entries']
             if not data:
                 return False, 'No items found in the RSS feed ' + self.urls['base_url']
@@ -856,17 +879,33 @@ class TorrentRssProvider(TorrentProvider):
         sickrage.srCore.srLogger.info("Saved custom_torrent html dump %s " % dumpName)
         return True
 
-    def seedRatio(self):
-        return self.ratio
-
     @classmethod
     def getProviders(cls):
-        return cls.getDefaultProviders()
+        providers = cls.getDefaultProviders()
+
+        try:
+            for curProviderStr in sickrage.srCore.srConfig.CUSTOM_PROVIDERS.split('!!!'):
+                if not len(curProviderStr):
+                    continue
+
+                try:
+                    cur_type, curProviderData = curProviderStr.split('|', 1)
+                    if cur_type == "torrentrss":
+                        cur_name, cur_url, cur_cookies, cur_title_tag = curProviderData.split('|')
+                        cur_url = sickrage.srCore.srConfig.clean_url(cur_url)
+
+                        providers += [TorrentRssProvider(cur_name, cur_url, False, cur_cookies, cur_title_tag)]
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        return providers
 
     @classmethod
     def getDefaultProviders(cls):
         return [
-            cls('showRSS', 'showrss.info', False, None, 'title', 'eponly', True, True, True, True)
+            cls('showRSS', 'showrss.info', False, '', 'title', 'eponly', True, True, True, True)
         ]
 
 
@@ -877,7 +916,7 @@ class NewznabProvider(NZBProvider):
                  name,
                  url,
                  private,
-                 key=None,
+                 key='',
                  catIDs='5030,5040',
                  search_mode='eponly',
                  search_fallback=False,
@@ -1123,16 +1162,36 @@ class NewznabProvider(NZBProvider):
 
     @classmethod
     def getProviders(cls):
-        return cls.getDefaultProviders()
+        providers = cls.getDefaultProviders()
+
+        try:
+            for curProviderStr in sickrage.srCore.srConfig.CUSTOM_PROVIDERS.split('!!!'):
+                if not len(curProviderStr):
+                    continue
+
+                try:
+                    cur_type, curProviderData = curProviderStr.split('|', 1)
+
+                    if cur_type == "newznab":
+                        cur_name, cur_url, cur_key, cur_cat = curProviderData.split('|')
+                        cur_url = sickrage.srCore.srConfig.clean_url(cur_url)
+
+                        providers += [NewznabProvider(cur_name, cur_url, bool(not cur_key == 0), key=cur_key)]
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        return providers
 
     @classmethod
     def getDefaultProviders(cls):
         return [
-            cls('SickBeard', 'lolo.sickbeard.com', False, None, '5030,5040', 'eponly', False, False, False, True),
-            cls('NZB.Cat', 'nzb.cat', True, None, '5030,5040,5010', 'eponly', True, True, True, True),
-            cls('NZBGeek', 'api.nzbgeek.info', True, None, '5030,5040', 'eponly', False, False, False, True),
-            cls('NZBs.org', 'nzbs.org', True, None, '5030,5040', 'eponly', False, False, False, True),
-            cls('Usenet-Crawler', 'usenet-crawler.com', True, None, '5030,5040', 'eponly', False, False, False, True)
+            cls('SickBeard', 'lolo.sickbeard.com', False, '', '5030,5040', 'eponly', False, False, False, True),
+            cls('NZB.Cat', 'nzb.cat', True, '', '5030,5040,5010', 'eponly', True, True, True, True),
+            cls('NZBGeek', 'api.nzbgeek.info', True, '', '5030,5040', 'eponly', False, False, False, True),
+            cls('NZBs.org', 'nzbs.org', True, '', '5030,5040', 'eponly', False, False, False, True),
+            cls('Usenet-Crawler', 'usenet-crawler.com', True, '', '5030,5040', 'eponly', False, False, False, True)
         ]
 
 
@@ -1201,27 +1260,18 @@ class providersDict(dict):
     def __init__(self):
         super(providersDict, self).__init__()
 
-        self.filename = os.path.abspath(os.path.join(sickrage.DATA_DIR, 'providers.db'))
+        self.provider_order = []
 
+        self[NZBProvider.type] = {}
+        self[TorrentProvider.type] = {}
+        self[NewznabProvider.type] = {}
+        self[TorrentRssProvider.type] = {}
+
+    def load(self):
         self[NZBProvider.type] = dict([(p.id, p) for p in NZBProvider.getProviders()])
         self[TorrentProvider.type] = dict([(p.id, p) for p in TorrentProvider.getProviders()])
         self[NewznabProvider.type] = dict([(p.id, p) for p in NewznabProvider.getProviders()])
         self[TorrentRssProvider.type] = dict([(p.id, p) for p in TorrentRssProvider.getProviders()])
-
-        self.provider_order = []
-        self.sort()
-
-    def sync(self):
-        remove = []
-
-        # find
-        for p in self.provider_order:
-            if p not in self.all():
-                remove.append(p)
-
-        # remove
-        for r in remove:
-            self.provider_order.pop(self.provider_order.index(r))
 
     def sort(self, key=None, randomize=False):
         sorted_providers = []
@@ -1232,10 +1282,12 @@ class providersDict(dict):
         if randomize:
             random.shuffle(key)
 
-        for p in [self.all()[x] for x in key]:
-            (lambda: sorted_providers.append(p), lambda: sorted_providers.insert(0, p))[p.isEnabled]()
+        for p in [self.enabled()[x] for x in key if x in self.enabled()]:
+            sorted_providers.append(p)
 
-        self.provider_order = [x.id for x in sorted_providers]
+        for p in [self.disabled()[x] for x in key if x in self.disabled()]:
+            sorted_providers.append(p)
+
         return OrderedDict([(x.id, x) for x in sorted_providers])
 
     def enabled(self):
@@ -1245,33 +1297,22 @@ class providersDict(dict):
         return dict([(pID, pObj) for pID, pObj in self.all().items() if not pObj.isEnabled])
 
     def all(self):
-        return reduce(lambda a, b: a.update(b) or a, [
-            self.nzb(),
-            self.torrent(),
-            self.newznab(),
-            self.torrentrss()
-        ], {})
+        return dict(self.nzb().items() + self.torrent().items() + self.newznab().items() + self.torrentrss().items())
 
     def all_nzb(self):
-        return reduce(lambda a, b: a.update(b) or a, [
-            self.nzb(),
-            self.newznab()
-        ], {})
+        return dict(self.nzb().items() + self.newznab().items())
 
     def all_torrent(self):
-        return reduce(lambda a, b: a.update(b) or a, [
-            self.torrent(),
-            self.torrentrss()
-        ], {})
+        return dict(self.torrent().items() + self.torrentrss().items())
 
     def nzb(self):
         return self[NZBProvider.type]
 
-    def newznab(self):
-        return self[NewznabProvider.type]
-
     def torrent(self):
         return self[TorrentProvider.type]
+
+    def newznab(self):
+        return self[NewznabProvider.type]
 
     def torrentrss(self):
         return self[TorrentRssProvider.type]

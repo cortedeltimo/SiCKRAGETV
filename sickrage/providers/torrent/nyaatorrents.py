@@ -1,5 +1,5 @@
 # Author: Mr_Orange
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -107,5 +107,5 @@ class NyaaProvider(TorrentProvider):
 
         return results
 
-    def seedRatio(self):
+    def seed_ratio(self):
         return self.ratio

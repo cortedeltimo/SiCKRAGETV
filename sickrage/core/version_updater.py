@@ -1,5 +1,5 @@
 # Author: echel0n <echel0n@sickrage.ca>
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -34,7 +34,6 @@ import github
 import sickrage
 from sickrage.core.helpers import backupSR, removetree
 from sickrage.notifiers import srNotifiers
-from tornado.ioloop import IOLoop
 
 
 class srVersionUpdater(object):
@@ -66,7 +65,7 @@ class srVersionUpdater(object):
                             if self.update():
                                 sickrage.srCore.srLogger.info("Update was successful!")
                                 sickrage.srCore.srNotifications.message('Update was successful')
-                                IOLoop.current().stop()
+                                sickrage.srCore.io_loop.stop()
                             else:
                                 sickrage.srCore.srLogger.info("Update failed!")
                                 sickrage.srCore.srNotifications.message('Update failed!')
@@ -543,7 +542,7 @@ class SourceUpdateManager(UpdateManager):
             return False
 
     def _check_for_new_version(self):
-        git_version_url = "http://www.sickrage.ca/version.txt"
+        git_version_url = "https://git.sickrage.ca/SiCKRAGE/sickrage/raw/master/sickrage/version.txt"
 
         try:
             return sickrage.srCore.srWebSession.get(git_version_url).text
@@ -571,7 +570,7 @@ class SourceUpdateManager(UpdateManager):
         Downloads the latest source tarball from server and installs it over the existing version.
         """
 
-        tar_download_url = 'http://www.sickrage.ca/sr-update.tar'
+        tar_download_url = 'https://git.sickrage.ca/SiCKRAGE/sickrage/repository/archive.tar?ref=master'
 
         try:
             # prepare the update dir

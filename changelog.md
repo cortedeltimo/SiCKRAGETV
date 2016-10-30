@@ -1,6 +1,34 @@
 # Changelog
 
-- * 8190ecc - 2016-10-13: new: v8.5.6 
+- * 6f37281 - 2016-10-25: new: v8.7.1 fix: Fixed issues with custom newznab providers 
+- * f385fce - 2016-10-25: new: v8.7.0 fix: Fixed issues with ordering of providers in settings fix: Fixed issues with removing of custom providers in settings 
+- * 862a810 - 2016-10-25: new: v8.6.9 fix: Fixed issues provider settings 
+- * d0d9a70 - 2016-10-25: new: v8.6.8 fix: Fixed issues with custom providers 
+- * 850f2be - 2016-10-23: fix: misc url changes/cleanups 
+- * 179d46b - 2016-10-23: fix: misc url changes/cleanups 
+- * a6bdbdb - 2016-10-23: new: v8.6.7 fix: Updated ombwtfnzbs url 
+- * 3405193 - 2016-10-23: new: v8.6.6 fix: Misc cleanups, Resolved torrent provider seed ratio issue 
+- * 437e2be - 2016-10-23: new: v8.6.5 
+- * 99fb372 - 2016-10-23: fix: Misc cleanup of code and headers including url updates fix: Fixed code for source updating 
+- * 4031902 - 2016-10-22: new: v8.6.4 
+- * af98b78 - 2016-10-22: fix: Added in missing jquery-ui 
+- * f8b1e93 - 2016-10-22: fix: Added missing jquery-ui images fix: Updated bower components 
+- * 002de48 - 2016-10-22: fix: Fixed issues with saving providers then having incorrect attributes showing 
+- * 990916d - 2016-10-22: fix: Monkey-Patched CodernityDB IU Storage get function to not print to screen debug messages 
+- * 3db5ed7 - 2016-10-22: fix: corrected issue with checking for enable_cookies attribute 
+- * d3b508f - 2016-10-22: new: Added user-settable cookie support for TorrentDay, Scenetime, and Custom RSS Torrent providers 
+- * fa64467 - 2016-10-22: fix: Typo in API causing doubles 
+- * e5f0fae - 2016-10-15: new: v8.6.3 fix: Switched back to TornadoScheduler for APScheduler 
+- * c888b11 - 2016-10-15: new: v8.6.2 new: APScheduler v3.2 
+- * c96cfe6 - 2016-10-15: new: v8.6.1 fix: Fixed issues with loading languages from indexers 
+- * 7fe3d84 - 2016-10-15: new: v8.6.0 
+- * 33db42e - 2016-10-15: fix: Fixed proper searcher fix: Changed scheduler from TornadoScheduler to BackgroundScheduler 
+- * b1a92a3 - 2016-10-15: new: v8.5.8 
+- * a0f0484 - 2016-10-15: fix: Misc small fixes 
+- * 0a242c6 - 2016-10-14: fix: Added IOLoop variable to core module 
+- * 5ba5063 - 2016-10-13: fix: Minor change (testing) 
+- * 74e09f1 - 2016-10-13: new: v8.5.7 fix: Minor fix for metadata episode creation 
+- * f7d7168 - 2016-10-13: new: v8.5.6 
 - * 5e7f7ac - 2016-10-13: fix: Misc code corrections 
 - * c724b64 - 2016-10-13: fix: Post-Processing 
 - * 416b349 - 2016-10-13: new: v8.5.5 fix: Post-Processing handles deleted episode exceptions properly now 

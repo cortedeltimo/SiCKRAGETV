@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 # Author: echel0n <echel0n@sickrage.ca>
-# URL: https://git.sickrage.ca
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -33,7 +33,7 @@ from sickrage.providers import NZBProvider
 
 class OmgwtfnzbsProvider(NZBProvider):
     def __init__(self):
-        super(OmgwtfnzbsProvider, self).__init__("omgwtfnzbs", 'omgwtfnzbs.org', True)
+        super(OmgwtfnzbsProvider, self).__init__("omgwtfnzbs", 'omgwtfnzbs.me', True)
 
         self.username = None
         self.api_key = None

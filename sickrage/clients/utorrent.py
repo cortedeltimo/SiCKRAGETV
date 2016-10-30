@@ -1,7 +1,7 @@
 
 
 # Authors: Mr_Orange <mr_orange@hotmail.it>, EchelonFour
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #

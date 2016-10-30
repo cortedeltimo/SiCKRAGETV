@@ -1,5 +1,5 @@
 # Author: Nick Sologoub
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -172,5 +172,5 @@ class PretomeProvider(TorrentProvider):
 
         return results
 
-    def seedRatio(self):
+    def seed_ratio(self):
         return self.ratio

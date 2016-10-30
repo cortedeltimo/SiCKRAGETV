@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 # Author: echel0n <echel0n@sickrage.ca>
-# URL: https://git.sickrage.ca
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -144,7 +144,7 @@ class BLUETIGERSProvider(TorrentProvider):
 
         return results
 
-    def seedRatio(self):
+    def seed_ratio(self):
         return self.ratio
 
 

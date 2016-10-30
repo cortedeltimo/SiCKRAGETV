@@ -2,7 +2,7 @@
 # Authors: Raver2046
 #          adaur
 # based on tpi.py
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -141,5 +141,5 @@ class LibertaliaProvider(TorrentProvider):
 
         return results
 
-    def seedRatio(self):
+    def seed_ratio(self):
         return self.ratio

@@ -1,42 +1,40 @@
 <%inherit file="../layouts/main.mako"/>
 <%!
+    import json
     import sickrage
     from sickrage.providers import NZBProvider, TorrentProvider, NewznabProvider, TorrentRssProvider
     from sickrage.providers.torrent import thepiratebay
     from sickrage.core.helpers import anon_url
 %>
 
-<%block name="scripts">
-    <script type="text/javascript">
-        $(document).ready(function () {
-            % if sickrage.srCore.srConfig.USE_NZBS:
-                % for providerID, providerObj in sickrage.srCore.providersDict.newznab().items():
-                    SICKRAGE.config.providers.addNewznabProvider(
-                            '${providerID}',
-                            '${providerObj.name}',
-                            '${providerObj.urls["base_url"]}',
-                            '${("false", "true")[providerObj.key > 0]}',
-                            '${providerObj.key}',
-                            '${providerObj.catIDs}',
-                            '${int(providerObj.default)}',
-                            '${("false", "true")[bool(sickrage.srCore.srConfig.USE_NZBS)]}');
-                % endfor
-            % endif
+<%block name="metas">
+    <%
+        newznab_providers = ''
+        torrentrss_providers = ''
 
-            % if sickrage.srCore.srConfig.USE_TORRENTS:
-                % for providerID, providerObj in sickrage.srCore.providersDict.torrentrss().items():
-                    SICKRAGE.config.providers.addTorrentRssProvider(
-                            '${providerID}',
-                            '${providerObj.name}',
-                            '${providerObj.urls["base_url"]}',
-                            '${("false", "true")[providerObj.cookies is not None]}',
-                            '${providerObj.cookies}',
-                            '${providerObj.titleTAG}',
-                            '${("false", "true")[bool(sickrage.srCore.srConfig.USE_TORRENTS)]}');
-                % endfor
-            % endif
-        });
-    </script>
+        if sickrage.srCore.srConfig.USE_NZBS:
+            for providerID, providerObj in sickrage.srCore.providersDict.newznab().items():
+                newznab_providers += '{}'.format(
+                        '|'.join([providerID,
+                        providerObj.name,
+                        providerObj.urls["base_url"],
+                        providerObj.key,
+                        providerObj.catIDs,
+                        ("false", "true")[bool(int(providerObj.default))],
+                        ("false", "true")[bool(sickrage.srCore.srConfig.USE_NZBS)]]))
+
+        if sickrage.srCore.srConfig.USE_TORRENTS:
+            for providerID, providerObj in sickrage.srCore.providersDict.torrentrss().items():
+                torrentrss_providers += '{}!!!'.format(
+                    '|'.join([providerID,
+                              providerObj.name,
+                              providerObj.urls["base_url"],
+                              providerObj.cookies,
+                              providerObj.titleTAG,
+                              ("false", "true")[bool(sickrage.srCore.srConfig.USE_TORRENTS)]]))
+    %>
+    <meta data-var="NEWZNAB_PROVIDERS" data-content="${newznab_providers}">
+    <meta data-var="TORRENTRSS_PROVIDERS" data-content="${torrentrss_providers}">
 </%block>
 
 <%block name="content">
@@ -80,11 +78,11 @@
                         <fieldset class="component-group-list">
                             <ul id="provider_order_list">
                                 % for providerID, providerObj in sickrage.srCore.providersDict.sort().items():
-                                    % if (providerObj.type in [NZBProvider.type, NewznabProvider.type] and sickrage.srCore.srConfig.USE_NZBS) or (providerObj.type in [TorrentProvider.type, TorrentRssProvider] and sickrage.srCore.srConfig.USE_TORRENTS):
-                                        <li class="ui-state-default ${('nzb-provider', 'torrent-provider')[bool(providerObj.type in [TorrentProvider.type, TorrentRssProvider])]}"
+                                    % if (providerObj.type in [NZBProvider.type, NewznabProvider.type] and sickrage.srCore.srConfig.USE_NZBS) or (providerObj.type in [TorrentProvider.type, TorrentRssProvider.type] and sickrage.srCore.srConfig.USE_TORRENTS):
+                                        <li class="ui-state-default ${('nzb-provider', 'torrent-provider')[bool(providerObj.type in [TorrentProvider.type, TorrentRssProvider.type])]}"
                                             id="${providerID}">
                                             <input type="checkbox" id="enable_${providerID}"
-                                                   class="provider_enabler" ${('', 'checked="checked"')[providerObj.isEnabled == True]}/>
+                                                   class="provider_enabler" ${('', 'checked="checked"')[bool(providerObj.isEnabled)]}/>
                                             <a href="${anon_url(providerObj.urls['base_url'])}" class="imgLink"
                                                rel="noreferrer"
                                                onclick="window.open(this.href, '_blank'); return false;"><img
@@ -94,9 +92,9 @@
                                             <label for="enable_${providerID}"
                                                    style="vertical-align:middle;">${providerObj.name}</label>
                                             ${('<span class="red-text">*</span>', '')[bool(providerObj.supports_backlog)]}
-                                            <span class="ui-icon ui-icon-gear pull-right"
+                                            <span class="ui-icon ui-icon-arrowthick-2-n-s pull-right"
                                                   style="vertical-align:middle;"></span>
-                                            <span class="ui-icon ${('ui-icon-unlocked','ui-icon-locked')[bool(providerObj.private)]} pull-right"
+                                            <span class="ui-icon ${('ui-icon-unlocked','ui-icon-locked')[bool(providerObj.private)]} pull-left"
                                                   style="vertical-align:middle;"></span>
                                         </li>
                                     % endif
@@ -422,6 +420,26 @@
                                                            class="form-control input-sm input350"
                                                            autocapitalize="off"/>
                                                 </span>
+                                            </label>
+                                        </div>
+                                    % endif
+
+                                    % if getattr(providerObj, 'enable_cookies', False):
+                                        <div class="field-pair">
+                                            <label for="${providerID}_cookies">
+                                                <span class="component-title">Cookies:</span>
+                                                <span class="component-desc">
+                                                    <input type="text" name="${providerID}_cookies"
+                                                           id="${providerID}_cookies"
+                                                           value="${providerObj.cookies}"
+                                                           class="form-control input-sm input350"
+                                                           autocapitalize="off" autocomplete="no"
+                                                    />
+                                                </span>
+                                            </label>
+                                            <label>
+                                                <span class="component-title">&nbsp;</span>
+                                                <span class="component-desc">eg. uid=xx;pass=yy</span>
                                             </label>
                                         </div>
                                     % endif

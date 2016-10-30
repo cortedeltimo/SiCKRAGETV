@@ -1,5 +1,5 @@
 # Author: echel0n <echel0n@sickrage.ca>
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -35,7 +35,6 @@ from mako.lookup import TemplateLookup
 from tornado.concurrent import run_on_executor
 from tornado.escape import json_encode, recursive_unicode, json_decode
 from tornado.gen import coroutine
-from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, authenticated
 
 try:
@@ -90,7 +89,7 @@ class BaseHandler(RequestHandler):
     def __init__(self, application, request, **kwargs):
         super(BaseHandler, self).__init__(application, request, **kwargs)
 
-        self.io_loop = IOLoop.current()
+        self.io_loop = sickrage.srCore.io_loop
         self.executor = ThreadPoolExecutor(sickrage.srCore.CPU_COUNT)
 
         # template settings
@@ -333,7 +332,7 @@ class CalendarHandler(BaseHandler):
                     "%Y%m%d") + 'T' + air_date_time_end.strftime(
                     "%H%M%S") + 'Z\r\n'
                 if sickrage.srCore.srConfig.CALENDAR_ICONS:
-                    ical += 'X-GOOGLE-CALENDAR-CONTENT-ICON:http://www.sickrage.ca/favicon.ico\r\n'
+                    ical += 'X-GOOGLE-CALENDAR-CONTENT-ICON:https://www.sickrage.ca/favicon.ico\r\n'
                     ical += 'X-GOOGLE-CALENDAR-CONTENT-DISPLAY:CHIP\r\n'
                 ical += 'SUMMARY: {0} - {1}x{2} - {3}\r\n'.format(
                     show['show_name'], episode['season'], episode['episode'], episode['name']
@@ -1012,7 +1011,7 @@ class Home(WebHandler):
     @staticmethod
     def saveShowNotifyList(show=None, emails=None):
         try:
-            dbData = MainDB().db.get('tv_shows', show, with_doc=True)['doc']
+            dbData = MainDB().db.get('tv_shows', int(show), with_doc=True)['doc']
             dbData['notify_list'] = emails
             MainDB().db.update(dbData)
         except RecordNotFound:
@@ -1089,17 +1088,14 @@ class Home(WebHandler):
 
         self._genericMessage("Shutting down", "SiCKRAGE is shutting down")
         sickrage.restart = False
-        IOLoop.current().stop()
+        sickrage.srCore.io_loop.stop()
 
     def restart(self, pid=None):
         if str(pid) != str(sickrage.srCore.PID):
             return self.redirect('/' + sickrage.srCore.srConfig.DEFAULT_PAGE + '/')
 
         self._genericMessage("Restarting", "SiCKRAGE is restarting")
-
-        self.io_loop.add_timeout(
-            datetime.timedelta(seconds=10),
-            IOLoop.current().stop)
+        self.io_loop.add_timeout(datetime.timedelta(seconds=10), sickrage.srCore.io_loop.stop)
 
         return self.render(
             "/home/restart.mako",
@@ -1388,7 +1384,7 @@ class Home(WebHandler):
         anime = sickrage.srCore.srConfig.checkbox_to_value(anime)
         subtitles = sickrage.srCore.srConfig.checkbox_to_value(subtitles)
 
-        if indexerLang and indexerLang in srIndexerApi(showObj.indexer).indexer().languages().keys():
+        if indexerLang and indexerLang in srIndexerApi(showObj.indexer).indexer().languages.keys():
             indexer_lang = indexerLang
         else:
             indexer_lang = showObj.lang
@@ -2298,9 +2294,7 @@ class HomeAddShows(Home):
 
     @staticmethod
     def getIndexerLanguages():
-        result = srIndexerApi().indexer().languages().keys()
-
-        return json_encode({'results': result})
+        return json_encode({'results': srIndexerApi().indexer().language.keys()})
 
     @staticmethod
     def sanitizeFileName(name):
@@ -2335,7 +2329,7 @@ class HomeAddShows(Home):
                 [[srIndexerApi(i).name, i, srIndexerApi(i).config["show_url"],
                   int(show['id']), show['seriesname'], show['firstaired']] for show in shows])
 
-        lang_id = srIndexerApi().indexer().languages()[lang]
+        lang_id = srIndexerApi().indexer().languages[lang]
         return json_encode({'results': final_results, 'langid': lang_id})
 
     def massAddTable(self, rootDir=None):
@@ -2996,7 +2990,8 @@ class Manage(Home, WebRoot):
         for cur_indexer_id in to_change:
             # get a list of all the eps we want to change if they just said "all"
             if 'all' in to_change[cur_indexer_id]:
-                all_eps_results = [x['doc'] for x in MainDB().db.get_many('tv_episodes', cur_indexer_id, with_doc=True)
+                all_eps_results = [x['doc'] for x in
+                                   MainDB().db.get_many('tv_episodes', int(cur_indexer_id), with_doc=True)
                                    if x['doc']['status'] in status_list and x['doc']['season'] != 0]
 
                 all_eps = [str(x["season"]) + 'x' + str(x["episode"]) for x in all_eps_results]
@@ -3111,7 +3106,7 @@ class Manage(Home, WebRoot):
         for cur_indexer_id in to_download:
             # get a list of all the eps we want to download subtitles if they just said "all"
             if 'all' in to_download[cur_indexer_id]:
-                dbData = [x['doc'] for x in MainDB().db.get_many('tv_episodes', cur_indexer_id, with_doc=True)
+                dbData = [x['doc'] for x in MainDB().db.get_many('tv_episodes', int(cur_indexer_id), with_doc=True)
                           if x['doc']['status'].endswith('4') and x['doc']['season'] != 0]
 
                 to_download[cur_indexer_id] = [str(x["season"]) + 'x' + str(x["episode"]) for x in dbData]
@@ -3148,9 +3143,8 @@ class Manage(Home, WebRoot):
             epCounts[Overview.UNAIRED] = 0
             epCounts[Overview.SNATCHED] = 0
 
-            dbData = sorted([e['doc'] for x in MainDB().db.get_many('tv_shows', curShow.indexerid, with_doc=True)
-                             for e in MainDB().db.get_many('tv_episodes', x['doc']['indexer_id'], with_doc=True)
-                             if x['doc']['paused'] == 0], key=lambda d: (d['season'], d['episode']), reverse=True)
+            dbData = sorted([e['doc'] for e in MainDB().db.get_many('tv_episodes', curShow.indexerid, with_doc=True)
+                             if curShow.paused == 0], key=lambda d: (d['season'], d['episode']), reverse=True)
 
             for curResult in dbData:
                 curEpCat = curShow.getOverview(int(curResult["status"] or -1))
@@ -4371,24 +4365,21 @@ class ConfigProviders(Config):
 
     @staticmethod
     def canAddNewznabProvider(name):
-        if not name:
-            return json_encode({'error': 'No Provider Name specified'})
+        if not name: return json_encode({'error': 'No Provider Name specified'})
 
-        providerID = NewznabProvider(name, '', True).id
-        if providerID not in sickrage.srCore.providersDict.newznab():
-            return json_encode({'success': providerID})
+        providerObj = NewznabProvider(name, '', True)
+        if providerObj.id not in sickrage.srCore.providersDict.newznab():
+            return json_encode({'success': providerObj.id})
         return json_encode({'error': 'Provider Name already exists as ' + name})
 
     @staticmethod
     def canAddTorrentRssProvider(name, url, cookies, titleTAG):
-        if not name:
-            return json_encode({'error': 'No Provider Name specified'})
+        if not name: return json_encode({'error': 'No Provider Name specified'})
 
         providerObj = TorrentRssProvider(name, url, True, cookies, titleTAG)
         if providerObj.id not in sickrage.srCore.providersDict.torrentrss():
             (succ, errMsg) = providerObj.validateRSS()
-            if succ:
-                return json_encode({'success': providerObj.id})
+            if succ: return json_encode({'success': providerObj.id})
             return json_encode({'error': errMsg})
         return json_encode({'error': 'Provider Name already exists as ' + name})
 
@@ -4419,21 +4410,14 @@ class ConfigProviders(Config):
     def saveProviders(self, provider_strings='', provider_order='', **kwargs):
         results = []
 
-        # enable/disable providers
-        for curProviderStr in provider_order.split():
-            curProvider, curEnabled = curProviderStr.split(':')
-            if curProvider not in sickrage.srCore.providersDict.all():
-                continue
-
-            curProvObj = sickrage.srCore.providersDict.all()[curProvider]
-            curProvObj.enabled = bool(sickrage.srCore.srConfig.to_int(curEnabled))
-
-        # add all the newznab info we got into our list
+        # custom providers
+        custom_providers = ''
         for curProviderStr in provider_strings.split():
-            cur_type, curProviderStr = curProviderStr.split('|', 1)
+            custom_providers += '{}!!!'.format(curProviderStr)
+            cur_type, curProviderData = curProviderStr.split('|', 1)
 
             if cur_type == "newznab":
-                cur_name, cur_url, cur_key, cur_cat = curProviderStr.split('|')
+                cur_name, cur_url, cur_key, cur_cat = curProviderData.split('|')
                 cur_url = sickrage.srCore.srConfig.clean_url(cur_url)
 
                 providerObj = NewznabProvider(cur_name, cur_url, bool(not cur_key == 0), key=cur_key)
@@ -4441,75 +4425,128 @@ class ConfigProviders(Config):
                     sickrage.srCore.providersDict.newznab().update(**{providerObj.id: providerObj})
                 else:
                     providerObj = sickrage.srCore.providersDict.newznab()[providerObj.id]
+                    providerObj.name = cur_name
+                    providerObj.urls['base_url'] = cur_url
+                    providerObj.key = cur_key
+                    providerObj.catIDs = cur_cat
 
-                # newznab provider settings
-                providerObj.name = cur_name
-                providerObj.urls['base_url'] = cur_url
-                providerObj.key = cur_key
-                providerObj.catIDs = cur_cat
-                providerObj.search_mode = str(kwargs.get(providerObj.id + '_search_mode', 'eponly')).strip()
-                providerObj.search_fallback = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerObj.id + '_search_fallback', 0))
-                providerObj.enable_daily = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerObj.id + '_enable_daily', 0))
-                providerObj.enable_backlog = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerObj.id + '_enable_backlog', 0))
             elif cur_type == "torrentrss":
-                curName, curURL, curCookies, curTitleTAG = curProviderStr.split('|')
-                curURL = sickrage.srCore.srConfig.clean_url(curURL)
+                cur_name, cur_url, cur_cookies, cur_title_tag = curProviderData.split('|')
+                cur_url = sickrage.srCore.srConfig.clean_url(cur_url)
 
-                providerObj = TorrentRssProvider(curName, curURL, False, curCookies, curTitleTAG)
+                providerObj = TorrentRssProvider(cur_name, cur_url, False, cur_cookies, cur_title_tag)
                 if providerObj.id not in sickrage.srCore.providersDict.torrentrss():
                     sickrage.srCore.providersDict.torrentrss().update(**{providerObj.id: providerObj})
                 else:
                     providerObj = sickrage.srCore.providersDict.torrentrss()[providerObj.id]
+                    providerObj.name = cur_name
+                    providerObj.urls['base_url'] = cur_url
+                    providerObj.cookies = cur_cookies
+                    providerObj.curTitleTAG = cur_title_tag
 
-                # torrentrss provider settings
-                providerObj.name = curName
-                providerObj.urls['base_url'] = curURL
-                providerObj.cookies = curCookies
-                providerObj.curTitleTAG = curTitleTAG
+        sickrage.srCore.srConfig.CUSTOM_PROVIDERS = custom_providers
+
+        # remove providers
+        for p in list(set(sickrage.srCore.providersDict.provider_order).difference(
+                [x.split(':')[0] for x in provider_order.split()])):
+            providerObj = sickrage.srCore.providersDict.all()[p]
+            del sickrage.srCore.providersDict[providerObj.type][p]
+
+        # enable/disable/sort providers
+        sickrage.srCore.providersDict.provider_order = []
+        for curProviderStr in provider_order.split():
+            curProvider, curEnabled = curProviderStr.split(':')
+            sickrage.srCore.providersDict.provider_order += [curProvider]
+            if curProvider in sickrage.srCore.providersDict.all():
+                curProvObj = sickrage.srCore.providersDict.all()[curProvider]
+                curProvObj.enabled = bool(sickrage.srCore.srConfig.to_int(curEnabled))
 
         # dynamically load provider settings
         for providerID, providerObj in sickrage.srCore.providersDict.all().items():
             try:
-                providerObj.minseed = int(kwargs.get(providerID + '_minseed') or 0)
-                providerObj.minleech = int(kwargs.get(providerID + '_minleech') or 0)
-                providerObj.ratio = str(kwargs.get(providerID + '_ratio', '')).strip()
-                providerObj.digest = str(kwargs.get(providerID + '_digest', '')).strip()
-                providerObj.hash = str(kwargs.get(providerID + '_hash', '')).strip()
-                providerObj.api_key = str(kwargs.get(providerID + '_api_key', '')).strip()
-                providerObj.username = str(kwargs.get(providerID + '_username', '')).strip()
-                providerObj.password = str(kwargs.get(providerID + '_password', '')).strip()
-                providerObj.passkey = str(kwargs.get(providerID + '_passkey', '')).strip()
-                providerObj.pin = str(kwargs.get(providerID + '_pin', '')).strip()
-                providerObj.confirmed = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_confirmed') or 0)
-                providerObj.ranked = sickrage.srCore.srConfig.checkbox_to_value(kwargs.get(providerID + '_ranked') or 0)
-                providerObj.engrelease = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_engrelease') or 0)
-                providerObj.onlyspasearch = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_onlyspasearch') or 0)
-                providerObj.sorting = str(kwargs.get(providerID + '_sorting', 'seeders')).strip()
-                providerObj.freeleech = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_freeleech') or 0)
-                providerObj.reject_m2ts = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_reject_m2ts') or 0)
-                providerObj.search_mode = str(kwargs.get(providerID + '_search_mode', 'eponly')).strip()
-                providerObj.search_fallback = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_search_fallback') or 0)
-                providerObj.enable_daily = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_enable_daily') or 0)
-                providerObj.enable_backlog = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_enable_backlog') or 0)
-                providerObj.cat = int(kwargs.get(providerID + '_cat') or 0)
-                providerObj.subtitle = sickrage.srCore.srConfig.checkbox_to_value(
-                    kwargs.get(providerID + '_subtitle') or 0)
+                if hasattr(providerObj, 'minseed'):
+                    providerObj.minseed = int(kwargs.get(providerID + '_minseed') or 0)
+
+                if hasattr(providerObj, 'minleech'):
+                    providerObj.minleech = int(kwargs.get(providerID + '_minleech') or 0)
+
+                if hasattr(providerObj, 'ratio'):
+                    providerObj.ratio = str(kwargs.get(providerID + '_ratio', '')).strip()
+
+                if hasattr(providerObj, 'digest'):
+                    providerObj.digest = str(kwargs.get(providerID + '_digest', '')).strip()
+
+                if hasattr(providerObj, 'hash'):
+                    providerObj.hash = str(kwargs.get(providerID + '_hash', '')).strip()
+
+                if hasattr(providerObj, 'api_key'):
+                    providerObj.api_key = str(kwargs.get(providerID + '_api_key', '')).strip()
+
+                if hasattr(providerObj, 'username'):
+                    providerObj.username = str(kwargs.get(providerID + '_username', '')).strip()
+
+                if hasattr(providerObj, 'password'):
+                    providerObj.password = str(kwargs.get(providerID + '_password', '')).strip()
+
+                if hasattr(providerObj, 'passkey'):
+                    providerObj.passkey = str(kwargs.get(providerID + '_passkey', '')).strip()
+
+                if hasattr(providerObj, 'pin'):
+                    providerObj.pin = str(kwargs.get(providerID + '_pin', '')).strip()
+
+                if hasattr(providerObj, 'confirmed'):
+                    providerObj.confirmed = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_confirmed') or 0)
+
+                if hasattr(providerObj, 'ranked'):
+                    providerObj.ranked = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_ranked') or 0)
+
+                if hasattr(providerObj, 'engrelease'):
+                    providerObj.engrelease = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_engrelease') or 0)
+
+                if hasattr(providerObj, 'onlyspasearch'):
+                    providerObj.onlyspasearch = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_onlyspasearch') or 0)
+
+                if hasattr(providerObj, 'sorting'):
+                    providerObj.sorting = str(kwargs.get(providerID + '_sorting', 'seeders')).strip()
+
+                if hasattr(providerObj, 'freeleech'):
+                    providerObj.freeleech = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_freeleech') or 0)
+
+                if hasattr(providerObj, 'reject_m2ts'):
+                    providerObj.reject_m2ts = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_reject_m2ts') or 0)
+
+                if hasattr(providerObj, 'search_mode'):
+                    providerObj.search_mode = str(kwargs.get(providerID + '_search_mode', 'eponly')).strip()
+
+                if hasattr(providerObj, 'search_fallback'):
+                    providerObj.search_fallback = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_search_fallback') or 0)
+
+                if hasattr(providerObj, 'enable_daily'):
+                    providerObj.enable_daily = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_enable_daily') or 0)
+
+                if hasattr(providerObj, 'enable_backlog'):
+                    providerObj.enable_backlog = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_enable_backlog') or 0)
+
+                if hasattr(providerObj, 'cat'):
+                    providerObj.cat = int(kwargs.get(providerID + '_cat') or 0)
+
+                if hasattr(providerObj, 'subtitle'):
+                    providerObj.subtitle = sickrage.srCore.srConfig.checkbox_to_value(
+                        kwargs.get(providerID + '_subtitle') or 0)
+
+                if hasattr(providerObj, 'cookies'):
+                    providerObj.cookies = str(kwargs.get(providerID + '_cookies', '')).strip()
             except Exception as e:
                 continue
-
-        # sort providers
-        sickrage.srCore.providersDict.sort(re.findall(r'\w+[^\W\s]', provider_order))
 
         # save provider settings
         sickrage.srCore.srConfig.save()

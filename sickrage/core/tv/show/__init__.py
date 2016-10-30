@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 # Author: echel0n <echel0n@sickrage.ca>
-# URL: https://git.sickrage.ca
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -573,8 +573,6 @@ class TVShow(object):
                 dbData["season"] or 0, dbData["episode"] or 0))
 
             curEp = self.getEpisode(dbData["season"], dbData["episode"])
-            if not curEp: continue
-
             curEp.createMetaFiles()
 
     def updateMetadata(self):

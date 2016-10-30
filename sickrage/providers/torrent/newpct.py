@@ -1,7 +1,7 @@
 # Author: CristianBB
 # Greetings to Mr. Pine-apple
 #
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #

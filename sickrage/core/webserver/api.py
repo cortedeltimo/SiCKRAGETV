@@ -1,6 +1,6 @@
 # Author: Dennis Lutter <lad1337@gmail.com>
 # Author: Jonathon Saine <thezoggy@gmail.com>
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #
@@ -31,7 +31,6 @@ import urllib
 from tornado.concurrent import run_on_executor
 from tornado.escape import json_encode, recursive_unicode
 from tornado.gen import coroutine
-from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler
 
 try:
@@ -114,7 +113,7 @@ class ApiHandler(RequestHandler):
 
     def __init__(self, application, request, *args, **kwargs):
         super(ApiHandler, self).__init__(application, request)
-        self.io_loop = IOLoop.current()
+        self.io_loop = sickrage.srCore.io_loop
         self.executor = ThreadPoolExecutor(sickrage.srCore.CPU_COUNT)
 
     @coroutine
@@ -1528,7 +1527,7 @@ class CMD_SiCKRAGEPauseBacklog(ApiCall):
     _help = {
         "desc": "Pause or unpause the backlog search",
         "optionalParameters": {
-            "pause ": {"desc": "True to pause the backlog search, False to unpause it"}
+            "pause": {"desc": "True to pause the backlog search, False to unpause it"}
         }
     }
 
@@ -1579,7 +1578,7 @@ class CMD_SiCKRAGERestart(ApiCall):
 
     def run(self):
         """ Restart SiCKRAGE """
-        IOLoop.current().stop()
+        sickrage.srCore.io_loop.stop()
         return _responds(RESULT_SUCCESS, msg="SiCKRAGE is restarting...")
 
 
@@ -1596,7 +1595,7 @@ class CMD_SiCKRAGESearchIndexers(ApiCall):
     }
 
     def __init__(self, application, request, *args, **kwargs):
-        self.valid_languages = srIndexerApi().indexer().languages()
+        self.valid_languages = srIndexerApi().indexer().languages
         # required
         # optional
         self.name, args = self.check_params("name", None, False, "string", [], *args, **kwargs)
@@ -1805,7 +1804,7 @@ class CMD_SiCKRAGEShutdown(ApiCall):
         """ Shutdown SiCKRAGE """
         if sickrage.srCore.srWebServer:
             sickrage.restart = False
-            IOLoop.current().stop()
+            sickrage.srCore.io_loop.stop()
             return _responds(RESULT_SUCCESS, msg="SiCKRAGE is shutting down...")
         return _responds(RESULT_FAILURE, msg='SiCKRAGE can not be shut down')
 
@@ -2046,7 +2045,7 @@ class CMD_ShowAddNew(ApiCall):
     }
 
     def __init__(self, application, request, *args, **kwargs):
-        self.valid_languages = srIndexerApi().indexer().languages()
+        self.valid_languages = srIndexerApi().indexer().languages
         # required
         self.indexerid, args = self.check_params("indexerid",
                                                  None,

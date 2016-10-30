@@ -1,6 +1,6 @@
-# Author: duramato <matigonkas@outlook.com>
-# Author: miigotu
-# URL: https://github.com/SiCKRAGETV/sickrage
+# Author: echel0n <echel0n@sickrage.ca>
+# URL: https://sickrage.ca
+# Git: https://git.sickrage.ca/SiCKRAGE/sickrage
 # This file is part of SickRage.
 #
 # SickRage is free software: you can redistribute it and/or modify
@@ -133,5 +133,5 @@ class ExtraTorrentProvider(TorrentProvider):
         except Exception:
             return ''
 
-    def seedRatio(self):
+    def seed_ratio(self):
         return self.ratio

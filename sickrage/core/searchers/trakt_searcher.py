@@ -1,5 +1,5 @@
 # Author: Frank Fenton
-# URL: http://github.com/SiCKRAGETV/SickRage/
+# URL: https://sickrage.ca
 #
 # This file is part of SickRage.
 #

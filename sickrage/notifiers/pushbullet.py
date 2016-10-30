@@ -31,15 +31,15 @@ from sickrage.notifiers import srNotifiers
 
 
 class PushbulletNotifier(srNotifiers):
-    TEST_EVENT = 'Test'
+    TEST_EVENT = 'Test' 
 
     def test_notify(self, pushbullet_api):
-        sickrage.srCore.srLogger.debug("Sending a test Pushbullet notification.")
+        sickrage.srCore.srLogger.debug("Sending a test Pushbullet notification. %s" % pushbullet_api)
         return self._sendPushbullet(pushbullet_api, event=self.TEST_EVENT,
                                     message="Testing Pushbullet settings from SiCKRAGE")
 
     def get_devices(self, pushbullet_api):
-        sickrage.srCore.srLogger.debug("Testing Pushbullet authentication and retrieving the device list.")
+        sickrage.srCore.srLogger.debug("Testing Pushbullet authentication and retrieving the device list %s " % pushbullet_api)
         return self._sendPushbullet(pushbullet_api)
 
     def _notify_snatch(self, ep_name):
@@ -78,8 +78,9 @@ class PushbulletNotifier(srNotifiers):
         sickrage.srCore.srLogger.debug("Pushbullet notification type: %r" % 'note' if event else 'None')
 
         url = 'https://api.pushbullet.com/v2/%s' % ('devices', 'pushes')[event is not None]
-
-        data = json.dumps({
+	sickrage.srCore.srLogger.debug("Pushbullet url: %s" % url)
+        
+	data = json.dumps({
             'title': event.encode('utf-8'),
             'body': message.encode('utf-8'),
             'device_iden': pushbullet_device.encode('utf-8'),
@@ -89,8 +90,12 @@ class PushbulletNotifier(srNotifiers):
         method = 'GET' if data is None else 'POST'
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % pushbullet_api}
 
+
+
         try:
-            response = self.session.request(method, url, data=data, headers=headers)
+	    sickrage.srCore.srLogger.debug("Pushbullet %s %s %s" % (method, data, headers))
+            # response = self.session.request(method, url, data=data, headers=headers)a
+	    response =  self.session.request(method, url, data=data, headers=headers)
         except Exception:
             sickrage.srCore.srLogger.debug('Pushbullet authorization failed with exception: %r' % traceback.format_exc())
             return False
