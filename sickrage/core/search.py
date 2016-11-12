@@ -45,7 +45,7 @@ def _downloadResult(result):
     Downloads a result to the appropriate black hole folder.
 
     :param result: SearchResult instance to download.
-    :return: boolean, True on success
+    :return: boolean, True on succes/s
     """
 
     resProvider = result.provider
@@ -137,7 +137,7 @@ def snatchEpisode(result, endStatus=SNATCHED):
                         [x.strip() for x in sickrage.srCore.srConfig.TORRENT_TRACKERS.split(',') if x.strip()])
 
                 client = getClientIstance(sickrage.srCore.srConfig.TORRENT_METHOD)()
-                dlResult = client.sendTORRENT(result)
+		dlResult = client.sendTORRENT(result)
             else:
                 sickrage.srCore.srLogger.warning("Torrent file content is empty")
     else:
@@ -683,6 +683,7 @@ def searchProviders(show, episodes, manualSearch=False, downCurQuality=False, ca
             wantedEpCount = 0
             for wantedEp in episodes:
                 for result in finalResults:
+		    result.showName = show.name 
                     if wantedEp in result.episodes and isFinalResult(result):
                         wantedEpCount += 1
 

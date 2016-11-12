@@ -68,7 +68,7 @@ class TransmissionAPI(GenericClient):
 
         arguments = {'filename': result.url,
                      'paused': 1 if sickrage.srCore.srConfig.TORRENT_PAUSED else 0,
-                     'download-dir': sickrage.srCore.srConfig.TORRENT_PATH}
+                     'download-dir': sickrage.srCore.srConfig.TORRENT_PATH + "/" + result.showName + "/"}
 
         post_data = json.dumps({'arguments': arguments,
                                 'method': 'torrent-add'})
@@ -80,7 +80,7 @@ class TransmissionAPI(GenericClient):
 
         arguments = {'metainfo': b64encode(result.content),
                      'paused': 1 if sickrage.srCore.srConfig.TORRENT_PAUSED else 0,
-                     'download-dir': sickrage.srCore.srConfig.TORRENT_PATH}
+                     'download-dir': sickrage.srCore.srConfig.TORRENT_PATH + "/" + result.showName + "/"}
 
         post_data = json.dumps({'arguments': arguments,
                                 'method': 'torrent-add'})
