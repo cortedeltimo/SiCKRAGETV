@@ -1,6 +1,36 @@
 # Changelog
 
-- * 6f37281 - 2016-10-25: new: v8.7.1 fix: Fixed issues with custom newznab providers 
+- * b0b161e - 2016-11-15: v8.8.4 Fixed issues with deleting/removing shows Fixed issues with anime black/white release groups 
+- * e5e68fb - 2016-11-13: v8.8.3 Reverted closing databases on shutdown/restarts ... caused issues 
+- * 2a0f78f - 2016-11-13: Fixes issues with Newznab providers and dict key errors for feedparser Fixes issues with apikey being shown in log files 
+- * 6f7a79d - 2016-11-13: v8.8.2 Properly closes databases during restarts of app to prevent errors being thrown 
+- * a62cc0d - 2016-11-13: v8.8.1 Fixes issues with shutdowns taking forever 
+- * 6f0e03d - 2016-11-12: Fixed issues with Torrentz provider 
+- * e5ba547 - 2016-11-12: v8.8.0 Fixed issues with nzbget client 
+- * 671670d - 2016-11-12: Fixed issues with omgwtfnzbs newznab provider searches 
+- * 323696e - 2016-11-12: v8.7.9 Fixed issues with database and multiple threading Fixed issues with database and shutdowns Fixes issues with queues and shutdowns 
+- * 1f80a6f - 2016-11-12: Fixed issues with find propers searches 
+- * 5726d5f - 2016-11-11: Fixed issues with find propers routines 
+- * bc7184c - 2016-11-11: Fixed issues with database and too many files open error 
+- * 7ad7d01 - 2016-11-11: Fixed issues with database and too many files open error 
+- * 8acf7b3 - 2016-11-11: Fixed show display template code 
+- * f153e72 - 2016-11-11: Fixed show display template code 
+- * bde3888 - 2016-11-11: Fixed show display template code 
+- * 45d8ad2 - 2016-11-11: Fixed show display template code 
+- * a546517 - 2016-11-07: Updated logo 
+- * 83926de - 2016-11-07: v8.7.7 Added new logo design 
+- * 35db11d - 2016-11-05: new: v8.7.6 fix: Fixed issues with saving newznab provider settings fix: Fixed issues with searching rss feeds from providers update: Updated Core JS code 
+- * eabff6e - 2016-11-04: new: v8.7.5 fix: Added integrity check for databases that will auto-delete corrupt indexes, resolves marshal errors fix: Properly sort next episode dates when checking for next air date of new episodes 
+- * 1140fde - 2016-11-01: new: v8.7.4 fix: Fixed issues with saving api keys for newznab providers 
+- * 7df9a11 - 2016-11-01: new: v8.7.3 fix: Fixed core js code for newznab providers fix: Fixed issues with saving custom newznab providers 
+- * 2f74a8b - 2016-10-31: fix: Cleaned up code for finding shows in show list 
+- * 5b4ae73 - 2016-10-31: fix: Database backups now done for each database, 5 backups per 
+- * 25c7e45 - 2016-10-31: new: v8.7.2 fix: Fixed issues with database migration of old sqlite data, moved database (init,migrate,compact) calls to start of core module init function 
+- * 2af3779 - 2016-10-30: fix: Cleaned up version updater module code 
+- * ca9a483 - 2016-10-30: fix: Cleaned up template for new shows 
+- * cdc56b9 - 2016-10-29: fix: Cleaned up nzbGet module 
+- * 808f707 - 2016-10-29: new: Added cookie auth to IPTorrents provider 
+- * 15d2930 - 2016-10-25: new: v8.7.1 fix: Fixed issues with custom newznab providers 
 - * f385fce - 2016-10-25: new: v8.7.0 fix: Fixed issues with ordering of providers in settings fix: Fixed issues with removing of custom providers in settings 
 - * 862a810 - 2016-10-25: new: v8.6.9 fix: Fixed issues provider settings 
 - * d0d9a70 - 2016-10-25: new: v8.6.8 fix: Fixed issues with custom providers 

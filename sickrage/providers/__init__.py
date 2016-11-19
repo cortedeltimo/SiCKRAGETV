@@ -25,7 +25,6 @@ import itertools
 import os
 import random
 import re
-import time
 import urllib
 from base64 import b16encode, b32decode
 from collections import OrderedDict
@@ -44,7 +43,6 @@ from sickrage.core.caches.tv_cache import TVCache
 from sickrage.core.classes import NZBSearchResult, Proper, SearchResult, \
     TorrentSearchResult
 from sickrage.core.common import MULTI_EP_RESULT, Quality, SEASON_RESULT
-from sickrage.core.databases.main import MainDB
 from sickrage.core.exceptions import AuthException
 from sickrage.core.helpers import chmodAsParent, \
     findCertainShow, remove_file_failed, \
@@ -89,7 +87,7 @@ class GenericProvider(object):
     def imageName(self):
         return ""
 
-    def _checkAuth(self):
+    def check_auth(self):
         return True
 
     def _doLogin(self):
@@ -256,7 +254,7 @@ class GenericProvider(object):
 
     def findSearchResults(self, show, episodes, search_mode, manualSearch=False, downCurQuality=False, cacheOnly=False):
 
-        if not self._checkAuth:
+        if not self.check_auth:
             return
 
         self.show = show
@@ -394,7 +392,7 @@ class GenericProvider(object):
                     addCacheEntry = True
                 else:
                     airdate = parse_result.air_date.toordinal()
-                    dbData = [x['doc'] for x in MainDB().db.get_many('tv_episodes', showObj.indexerid, with_doc=True)
+                    dbData = [x['doc'] for x in sickrage.srCore.mainDB.db.get_many('tv_episodes', showObj.indexerid, with_doc=True)
                               if x['doc']['airdate'] == airdate]
 
                     if len(dbData) != 1:
@@ -462,7 +460,7 @@ class GenericProvider(object):
 
         return results
 
-    def findPropers(self, search_date=None):
+    def find_propers(self, search_date=None):
 
         results = self.cache.list_propers(search_date)
 
@@ -668,26 +666,23 @@ class TorrentProvider(GenericProvider):
         return os.path.join(sickrage.srCore.srConfig.TORRENT_DIR,
                             '{}.{}'.format(sanitizeFileName(name), self.type))
 
-    def findPropers(self, search_date=datetime.datetime.today()):
+    def find_propers(self, search_date=datetime.datetime.today()):
         results = []
-        dbData = []
 
-        for show in [s['doc'] for s in MainDB().db.all('tv_shows', with_doc=True)]:
-            for episode in [e['doc'] for e in MainDB().db.get_many('tv_episodes', show['indexer_id'], with_doc=True)
-                            if e['airdate'] >= str(search_date.toordinal())
-                            and e['status'] in Quality.DOWNLOADED + Quality.SNATCHED + Quality.SNATCHED_BEST]:
-                dbData += [episode]
+        for show in [s['doc'] for s in sickrage.srCore.mainDB.db.all('tv_shows', with_doc=True)]:
+            for episode in [e['doc'] for e in sickrage.srCore.mainDB.db.get_many('tv_episodes', show['indexer_id'], with_doc=True)]:
+                if episode['airdate'] >= str(search_date.toordinal()) \
+                        and episode['status'] in Quality.DOWNLOADED + Quality.SNATCHED + Quality.SNATCHED_BEST:
 
-        for show in dbData:
-            show = findCertainShow(sickrage.srCore.SHOWLIST, int(show["showid"]))
-            if show:
-                curEp = show.getEpisode(int(show["season"]), int(show["episode"]))
-                for term in self.proper_strings:
-                    searchString = self._get_episode_search_strings(curEp, add_string=term)
+                    self.show = findCertainShow(sickrage.srCore.SHOWLIST, int(episode["showid"]))
+                    if not show: continue
 
-                    for item in self.search(searchString[0]):
-                        title, url = self._get_title_and_url(item)
-                        results.append(Proper(title, url, datetime.datetime.today(), show))
+                    curEp = show.getEpisode(int(episode["season"]), int(episode["episode"]))
+                    for term in self.proper_strings:
+                        searchString = self._get_episode_search_strings(curEp, add_string=term)
+                        for item in self.search(searchString[0]):
+                            title, url = self._get_title_and_url(item)
+                            results.append(Proper(title, url, datetime.datetime.today(), self.show))
 
         return results
 
@@ -905,7 +900,7 @@ class TorrentRssProvider(TorrentProvider):
     @classmethod
     def getDefaultProviders(cls):
         return [
-            cls('showRSS', 'showrss.info', False, '', 'title', 'eponly', True, True, True, True)
+            cls('showRSS', 'showrss.info', False, '', 'title', 'eponly', False, False, False, True)
         ]
 
 
@@ -925,16 +920,18 @@ class NewznabProvider(NZBProvider):
                  default=False):
         super(NewznabProvider, self).__init__(name, url, private)
 
-        self.cache = NewznabCache(self)
+        self.key = key
+
         self.search_mode = search_mode
         self.search_fallback = search_fallback
         self.enable_daily = enable_daily
         self.enable_backlog = enable_backlog
-        self.key = key
         self.supports_backlog = True
+
         self.catIDs = catIDs
         self.default = default
-        self.last_search = datetime.datetime.now()
+
+        self.cache = TVCache(self, min_time=30)
 
     def get_newznab_categories(self):
         """
@@ -947,7 +944,7 @@ class NewznabProvider(NZBProvider):
         categories = []
         message = ""
 
-        self._checkAuth()
+        self.check_auth()
 
         params = {"t": "caps"}
         if self.key:
@@ -1032,7 +1029,11 @@ class NewznabProvider(NZBProvider):
     def _doGeneralSearch(self, search_string):
         return self.search({'q': search_string})
 
-    def _checkAuth(self):
+    def check_auth(self):
+        if self.private and not len(self.key):
+            sickrage.srCore.srLogger.warning('Invalid api key for {}. Check your settings'.format(self.name))
+            return False
+
         return True
 
     def _checkAuthFromData(self, data):
@@ -1041,8 +1042,8 @@ class NewznabProvider(NZBProvider):
 
         :type data: dict
         """
-        if not all([x in data for x in ['feed', 'entries']]):
-            return self._checkAuth()
+        if all([x in data for x in ['feed', 'entries']]):
+            return self.check_auth()
 
         try:
             if int(data['bozo']) == 1:
@@ -1065,11 +1066,13 @@ class NewznabProvider(NZBProvider):
         except (AttributeError, KeyError):
             pass
 
-        return True
+        return False
 
     def search(self, search_params, search_mode='eponly', epcount=0, age=0, epObj=None):
+        results = []
 
-        self._checkAuth()
+        if not self.check_auth():
+            return results
 
         params = {
             "t": "tvsearch",
@@ -1084,21 +1087,18 @@ class NewznabProvider(NZBProvider):
         if self.key:
             params['apikey'] = self.key
 
-        sickrage.srCore.srLogger.debug('[{}] Search parameters: {}'.format(self.name, repr(params)))
-
-        results = []
         offset = total = 0
+        last_search = datetime.datetime.now()
         while total >= offset:
-            search_url = self.urls['base_url'] + '/api?' + urllib.urlencode(params)
+            if (datetime.datetime.now() - last_search).seconds < 5:
+                continue
 
-            while (datetime.datetime.now() - self.last_search).seconds < 5:
-                time.sleep(1)
+            search_url = self.urls['base_url'] + '/api'
+            sickrage.srCore.srLogger.debug("Search url: %s?%s" % (search_url, urllib.urlencode(params)))
 
-            sickrage.srCore.srLogger.debug("Search url: %s" % search_url)
+            data = self.cache.getRSSFeed(search_url, params=params)
 
-            data = self.cache.getRSSFeed(search_url)
-
-            self.last_search = datetime.datetime.now()
+            last_search = datetime.datetime.now()
 
             if not self._checkAuthFromData(data):
                 break
@@ -1137,26 +1137,25 @@ class NewznabProvider(NZBProvider):
 
         return results
 
-    def findPropers(self, search_date=datetime.datetime.today()):
+    def find_propers(self, search_date=datetime.datetime.today()):
         results = []
         dbData = []
 
-        for show in [s['doc'] for s in MainDB().db.all('tv_shows', with_doc=True)]:
-            for episode in [e['doc'] for e in MainDB().db.get_many('tv_episodes', show['indexer_id'], with_doc=True)
-                            if e['airdate'] >= str(search_date.toordinal())
-                            and e['status'] in Quality.DOWNLOADED + Quality.SNATCHED + Quality.SNATCHED_BEST]:
-                dbData += [episode]
+        for show in [s['doc'] for s in sickrage.srCore.mainDB.db.all('tv_shows', with_doc=True)]:
+            for episode in [e['doc'] for e in sickrage.srCore.mainDB.db.get_many('tv_episodes', show['indexer_id'], with_doc=True)]:
+                if episode['airdate'] >= str(search_date.toordinal()) \
+                        and episode['status'] in Quality.DOWNLOADED + Quality.SNATCHED + Quality.SNATCHED_BEST:
 
-        for show in dbData:
-            self.show = findCertainShow(sickrage.srCore.SHOWLIST, int(show["showid"]))
-            if self.show:
-                curEp = self.show.getEpisode(int(show["season"]), int(show["episode"]))
-                searchStrings = self._get_episode_search_strings(curEp, add_string='PROPER|REPACK')
-                for searchString in searchStrings:
-                    for item in self.search(searchString):
-                        title, url = self._get_title_and_url(item)
-                        if re.match(r'.*(REPACK|PROPER).*', title, re.I):
-                            results += [Proper(title, url, datetime.datetime.today(), self.show)]
+                    self.show = findCertainShow(sickrage.srCore.SHOWLIST, int(show["showid"]))
+                    if not self.show: continue
+
+                    curEp = self.show.getEpisode(int(episode["season"]), int(episode["episode"]))
+                    searchStrings = self._get_episode_search_strings(curEp, add_string='PROPER|REPACK')
+                    for searchString in searchStrings:
+                        for item in self.search(searchString):
+                            title, url = self._get_title_and_url(item)
+                            if re.match(r'.*(REPACK|PROPER).*', title, re.I):
+                                results += [Proper(title, url, datetime.datetime.today(), self.show)]
 
         return results
 
@@ -1176,7 +1175,15 @@ class NewznabProvider(NZBProvider):
                         cur_name, cur_url, cur_key, cur_cat = curProviderData.split('|')
                         cur_url = sickrage.srCore.srConfig.clean_url(cur_url)
 
-                        providers += [NewznabProvider(cur_name, cur_url, bool(not cur_key == 0), key=cur_key)]
+                        provider = NewznabProvider(
+                            cur_name,
+                            cur_url,
+                            bool(not cur_key == 0),
+                            key=cur_key,
+                            catIDs=cur_cat
+                        )
+
+                        providers += [provider]
                 except Exception:
                     continue
         except Exception:
@@ -1207,53 +1214,6 @@ class TorrentRssCache(TVCache):
             self.provider.headers.update({'Cookie': self.provider.cookies})
 
         return self.getRSSFeed(self.provider.urls['base_url'])
-
-
-class NewznabCache(TVCache):
-    def __init__(self, provider_obj):
-
-        TVCache.__init__(self, provider_obj)
-
-        # only poll newznab providers every 30 minutes
-        self.min_time = 30
-        self.last_search = datetime.datetime.now()
-
-    def _get_rss_data(self):
-
-        params = {"t": "tvsearch",
-                  "cat": self.provider.catIDs,
-                  "maxage": 4,
-                  }
-
-        if self.provider.key:
-            params['apikey'] = self.provider.key
-
-        rss_url = self.provider.urls['base_url'] + '/api?' + urllib.urlencode(params)
-
-        while (datetime.datetime.now() - self.last_search).seconds < 5:
-            time.sleep(1)
-
-        sickrage.srCore.srLogger.debug("Cache update URL: %s " % rss_url)
-        data = self.getRSSFeed(rss_url)
-
-        self.last_search = datetime.datetime.now()
-
-        return data
-
-    def _checkAuth(self, data):
-        return self.provider._checkAuthFromData(data)
-
-    def _parseItem(self, item):
-        title, url = self._get_title_and_url(item)
-
-        self._checkItemAuth(title, url)
-
-        if not title or not url:
-            return None
-
-        tvrageid = 0
-
-        return self.addCacheEntry(title, url, indexer_id=tvrageid)
 
 
 class providersDict(dict):

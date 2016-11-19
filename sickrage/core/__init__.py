@@ -139,6 +139,11 @@ class Core(object):
         # init config
         self.srConfig = srConfig()
 
+        # init databases
+        self.mainDB = MainDB()
+        self.cacheDB = CacheDB()
+        self.failedDB = FailedDB()
+
         # init scheduler service
         self.srScheduler = TornadoScheduler()
 
@@ -207,6 +212,20 @@ class Core(object):
             helpers.moveFile(os.path.abspath(os.path.join(sickrage.DATA_DIR, 'sickbeard.db')),
                              os.path.abspath(os.path.join(sickrage.DATA_DIR, 'sickrage.db')))
 
+        # perform database startup actions
+        for db in [self.mainDB, self.cacheDB, self.failedDB]:
+            # initialize database
+            db.initialize()
+
+            # check integrity of database
+            db.check_integrity()
+
+            # migrate database
+            db.migrate()
+
+            # compact database
+            db.compact()
+
         # load config
         self.srConfig.load()
 
@@ -216,9 +235,9 @@ class Core(object):
         # setup logger settings
         self.srLogger.logSize = self.srConfig.LOG_SIZE
         self.srLogger.logNr = self.srConfig.LOG_NR
+        self.srLogger.logFile = self.srConfig.LOG_FILE
         self.srLogger.debugLogging = sickrage.DEBUG
         self.srLogger.consoleLogging = not sickrage.QUITE
-        self.srLogger.logFile = self.srConfig.LOG_FILE
 
         # start logger
         self.srLogger.start()
@@ -234,11 +253,6 @@ class Core(object):
                 return
         except:
             self.srLogger.error('Failed getting diskspace: %s', traceback.format_exc())
-
-        # perform database startup actions
-        for db in [MainDB, CacheDB, FailedDB]:
-            # compact the main database
-            db().compact()
 
         # load data for shows from database
         self.load_shows()
@@ -474,29 +488,29 @@ class Core(object):
             self.srWebServer.shutdown()
 
             # shutdown scheduler
-            self.srLogger.info("Shutting down scheduler")
+            self.srLogger.debug("Shutting down scheduler")
             self.srScheduler.shutdown()
 
             # shutdown show queue
             if self.SHOWQUEUE:
-                self.srLogger.info("Shutting down show queue")
+                self.srLogger.debug("Shutting down show queue")
                 self.SHOWQUEUE.shutdown()
 
             # shutdown search queue
             if self.SEARCHQUEUE:
-                self.srLogger.info("Shutting down search queue")
+                self.srLogger.debug("Shutting down search queue")
                 self.SEARCHQUEUE.shutdown()
 
             # log out of ADBA
             if sickrage.srCore.ADBA_CONNECTION:
-                self.srLogger.info("Logging out ANIDB connection")
+                self.srLogger.debug("Logging out ANIDB connection")
                 sickrage.srCore.ADBA_CONNECTION.logout()
 
             # save all show and config settings
             self.save_all()
 
             # shutdown logging
-            self.srLogger.shutdown()
+            self.srLogger.close()
 
         # delete pid file
         if sickrage.DAEMONIZE:
@@ -519,7 +533,7 @@ class Core(object):
         Populates the showlist with shows from the database
         """
 
-        for dbData in [x['doc'] for x in MainDB().db.all('tv_shows', with_doc=True)]:
+        for dbData in [x['doc'] for x in self.mainDB.db.all('tv_shows', with_doc=True)]:
             try:
                 self.srLogger.debug("Loading data for show: [%s]", dbData['show_name'])
                 show = TVShow(int(dbData['indexer']), int(dbData['indexer_id']))
