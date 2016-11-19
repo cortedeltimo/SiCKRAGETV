@@ -24,6 +24,7 @@ from xml.parsers.expat import ExpatError
 
 import sickrage
 import xmltodict
+import requests
 from sickrage.core.caches.tv_cache import TVCache
 from sickrage.core.helpers import tryInt
 from sickrage.providers import TorrentProvider
@@ -32,6 +33,9 @@ from sickrage.providers import TorrentProvider
 class ExtraTorrentProvider(TorrentProvider):
     def __init__(self):
         super(ExtraTorrentProvider, self).__init__("ExtraTorrent",'https://extra.to', False)
+
+	self.extrat_default_url = "http://extratorrent.cc"
+	self.extrat_proxy_url = "https://extra.to"
 
         self.urls.update({
             'rss': '{base_url}/rss.xml'.format(base_url=self.urls['base_url'])
@@ -63,8 +67,11 @@ class ExtraTorrentProvider(TorrentProvider):
                     search_params.update({'type': ('search', 'rss')[mode == 'RSS'], 'search': search_string})
 
                     try:
-                        data = sickrage.srCore.srWebSession.get(self.urls['rss'], params=search_params).text
-                    except Exception:
+			sickrage.srCore.srLogger.debug("URL %s Params %s" % (self.urls['rss'], search_params)) 
+			# data = sickrage.srCore.srWebSession.get(self.urls['rss'], params=search_params).text
+			# Using th srWebSession gives empty results on extratorrent rss. Using requests instead
+                        data = requests.get(self.urls['rss'], params=search_params).text
+		    except Exception:
                         sickrage.srCore.srLogger.debug("No data returned from provider")
                         continue
 
@@ -95,7 +102,7 @@ class ExtraTorrentProvider(TorrentProvider):
                         leechers = tryInt(item['leechers'], 0)
                         #download_url = item['enclosure']['@url'] if 'enclosure' in item else self._magnet_from_details(
                         #    item['link'])
-			item['link'] = item['link'].replace("http:", "https:")
+			item['link'] = item['link'].replace(self.extrat_default_url,  self.extrat_proxy_url)
 			download_url = self._magnet_from_details(item['link'])
 			sickrage.srCore.srLogger.debug("Download url: %s" % download_url)
 
@@ -128,7 +135,9 @@ class ExtraTorrentProvider(TorrentProvider):
 
     def _magnet_from_details(self, link):
         try:
-            details = sickrage.srCore.srWebSession.get(link).text
+	    # details = sickrage.srCore.srWebSession.get(link).text
+	    # Using th srWebSession gives empty results on extratorrent rss. Using requests instead
+            details = requests.get(link).text
             return re.search(r'href="(magnet.*?)"', details).group(1) or ''
         except Exception:
             return ''
