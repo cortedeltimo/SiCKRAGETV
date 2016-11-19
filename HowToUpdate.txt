@@ -1,0 +1,16 @@
+# Update master branch 
+git checkout master 
+git fetch upstream 
+git merge upstream/master 
+git push 
+
+# Merge master 
+git checkout corte
+git merge master
+
+# There will be unresolvable conflict in core.min.js. To generate this file again use: 
+./node_modules/.bin/uglifyjs ./sickrage/core/webserver/gui/default/js/core.js -m -o ./sickrage/core/webserver/gui/default/js/core.min.js
+
+# Commit & Push changed 
+git commit -m "Merged version ..."
+git push 
