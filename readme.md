@@ -1,5 +1,16 @@
 Automatic Video Library Manager for TV Shows. It watches for new episodes of your favorite shows, and when they are posted it does its magic.
 
+This clone is a customized version for: 
+
+- Extratorrent 
+- Transmission 
+- Pushbullet 
+
+# Optimizations compared to default sickrage
+
+- Fixed issue with setting up pushbullet (i'm trying to raise a bug to sickrage but to no avail) 
+- Added target directory with show name when adding torrent to transmission 
+- Customized extratorrent url (and using HTTPS) to avoid blockage in some countried  
 
 ## Run Sickrage at at boot 
 
